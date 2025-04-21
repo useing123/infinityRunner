@@ -2,24 +2,24 @@ import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Collectible as CollectibleType } from '../../types/game';
-import useGameStore from '../../store/gameStore';
 
 interface CollectibleProps {
   collectible: CollectibleType;
+  segmentStartZ: number;
 }
 
-const Collectible: React.FC<CollectibleProps> = ({ collectible }) => {
+const Collectible: React.FC<CollectibleProps> = ({ collectible, segmentStartZ }) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const { incrementCoins } = useGameStore();
   
   // Rotate collectible for visual effect
   useFrame((state) => {
     if (meshRef.current && !collectible.collected) {
       meshRef.current.rotation.y += 0.02;
       
-      // Add a gentle bobbing motion
+      // Add a gentle bobbing motion (use the meshRef's current y for base)
       meshRef.current.position.y = 
-        collectible.position.y + Math.sin(state.clock.getElapsedTime() * 2) * 0.1;
+        (collectible.position.y) + // Base Y position (relative to segment)
+         Math.sin(state.clock.getElapsedTime() * 2) * 0.1;
     }
   });
   
@@ -47,31 +47,21 @@ const Collectible: React.FC<CollectibleProps> = ({ collectible }) => {
     }
   };
   
-  // Handle collectible collection
-  const handleCollect = () => {
-    if (!collectible.collected) {
-      collectible.collected = true;
-      
-      if (collectible.type === 'coin') {
-        incrementCoins(1);
-      }
-      
-      // Add collection animation/effect here
-    }
-  };
-  
   // Only render if not collected
   if (collectible.collected) return null;
   
+  // Calculate relative Z position
+  const relativeZ = collectible.position.z - segmentStartZ;
+
   return (
     <mesh
       ref={meshRef}
+      // Use relativeZ for mesh position Z
       position={[
         collectible.position.x, 
-        collectible.position.y, 
-        collectible.position.z
+        collectible.position.y, // Keep original Y 
+        relativeZ
       ]}
-      onClick={handleCollect}
       castShadow
     >
       {getCollectibleGeometry()}

@@ -3,9 +3,10 @@ import { Obstacle as ObstacleType } from '../../types/game';
 
 interface ObstacleProps {
   obstacle: ObstacleType;
+  segmentStartZ: number;
 }
 
-const Obstacle: React.FC<ObstacleProps> = ({ obstacle }) => {
+const Obstacle: React.FC<ObstacleProps> = ({ obstacle, segmentStartZ }) => {
   // Define obstacle appearance based on type
   const getObstacleGeometry = () => {
     switch (obstacle.type) {
@@ -14,9 +15,9 @@ const Obstacle: React.FC<ObstacleProps> = ({ obstacle }) => {
           <boxGeometry args={[1.5, 1, 0.5]} />
         );
       case 'gap':
-        return (
-          <cylinderGeometry args={[0.5, 0.5, 1, 16]} />
-        );
+        // Return null to make the gap visually empty
+        // Collision logic still applies in World.tsx
+        return null; 
       case 'overhead':
         return (
           <boxGeometry args={[1.5, 0.5, 0.5]} />
@@ -34,7 +35,8 @@ const Obstacle: React.FC<ObstacleProps> = ({ obstacle }) => {
       case 'barrier':
         return <meshStandardMaterial color="#FF4136" />;
       case 'gap':
-        return <meshStandardMaterial color="#0074D9" />;
+        // No material needed if geometry is null
+        return null;
       case 'overhead':
         return <meshStandardMaterial color="#FFDC00" />;
       default:
@@ -43,15 +45,23 @@ const Obstacle: React.FC<ObstacleProps> = ({ obstacle }) => {
   };
   
   // Position overhead obstacles higher
+  // No special positioning needed for gap anymore
   const yPosition = obstacle.type === 'overhead' ? 1.5 : 0;
   
+  // Return null if the geometry is null (for gap type)
+  const geometry = getObstacleGeometry();
+  if (!geometry) return null;
+
+  // Calculate relative Z position
+  const relativeZ = obstacle.position.z - segmentStartZ;
+
   return (
     <mesh
-      position={[obstacle.position.x, yPosition, obstacle.position.z]}
+      position={[obstacle.position.x, yPosition, relativeZ]}
       scale={[obstacle.scale.x, obstacle.scale.y, obstacle.scale.z]}
       castShadow
     >
-      {getObstacleGeometry()}
+      {geometry} // Use the stored geometry
       {getObstacleMaterial()}
     </mesh>
   );

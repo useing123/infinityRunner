@@ -71,6 +71,7 @@ const TrackSegmentComponent: React.FC<TrackSegmentProps> = ({ segment }) => {
         <Obstacle 
           key={obstacle.id}
           obstacle={obstacle}
+          segmentStartZ={segment.position.z}
         />
       ))}
       
@@ -79,6 +80,7 @@ const TrackSegmentComponent: React.FC<TrackSegmentProps> = ({ segment }) => {
         <Collectible 
           key={collectible.id}
           collectible={collectible}
+          segmentStartZ={segment.position.z}
         />
       ))}
     </group>

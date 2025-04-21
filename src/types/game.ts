@@ -8,6 +8,16 @@ export interface GameStore {
   distance: number;
   coins: number;
   
+  // Player State
+  playerPosition: { x: number; y: number; z: number };
+  playerLane: number;
+  isJumping: boolean;
+  isSliding: boolean;
+  isDead: boolean;
+
+  // Track Segments
+  segments: TrackSegment[];
+
   // Actions
   startGame: () => void;
   endGame: () => void;
@@ -16,6 +26,9 @@ export interface GameStore {
   incrementCoins: (amount: number) => void;
   decrementLives: () => void;
   updateDistance: (distance: number) => void;
+  updatePlayerState: (newState: Partial<PlayerState>) => void;
+  setSegments: (segments: TrackSegment[]) => void;
+  collectCoin: (segmentId: string, coinId: string) => void;
 }
 
 export interface PlayerState {

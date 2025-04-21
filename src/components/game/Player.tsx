@@ -8,16 +8,19 @@ import { PlayerState } from '../../types/game';
 const Player: React.FC = () => {
   const playerRef = useRef<THREE.Group>(null);
   const gameState = useGameStore((state) => state.gameState);
-  const decrementLives = useGameStore((state) => state.decrementLives);
-  
-  // Player state
-  const [playerState, setPlayerState] = useState<PlayerState>({
-    position: { x: 0, y: 0, z: 0 },
-    lane: 0,
-    isJumping: false,
-    isSliding: false,
-    isDead: false
-  });
+  const {
+    playerLane,
+    isJumping,
+    isSliding,
+    isDead,
+    updatePlayerState,
+  } = useGameStore((state) => ({
+    playerLane: state.playerLane,
+    isJumping: state.isJumping,
+    isSliding: state.isSliding,
+    isDead: state.isDead,
+    updatePlayerState: state.updatePlayerState,
+  }));
   
   // Lane positions
   const lanePositions = [-2.5, 0, 2.5];
@@ -25,81 +28,64 @@ const Player: React.FC = () => {
   // Handle keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (gameState !== 'playing' || playerState.isDead) return;
+      if (gameState !== 'playing' || isDead) return;
+      
+      let newLane = playerLane;
+      let newIsJumping = isJumping;
+      let newIsSliding = isSliding;
       
       switch (e.key) {
         case 'ArrowLeft':
-          if (playerState.lane > -1 && !playerState.isJumping && !playerState.isSliding) {
-            setPlayerState(prev => ({ ...prev, lane: prev.lane - 1 }));
+          if (playerLane > -1 && !isJumping && !isSliding) {
+            newLane = playerLane - 1;
           }
           break;
         case 'ArrowRight':
-          if (playerState.lane < 1 && !playerState.isJumping && !playerState.isSliding) {
-            setPlayerState(prev => ({ ...prev, lane: prev.lane + 1 }));
+          if (playerLane < 1 && !isJumping && !isSliding) {
+            newLane = playerLane + 1;
           }
           break;
         case ' ': // Space key
-          if (!playerState.isJumping && !playerState.isSliding) {
-            jump();
+          if (!isJumping && !isSliding) {
+            newIsJumping = true;
           }
           break;
         case 's':
         case 'S':
-          if (!playerState.isJumping && !playerState.isSliding) {
-            slide();
+          if (!isJumping && !isSliding) {
+            newIsSliding = true;
           }
           break;
+      }
+      
+      // Update store if state changed
+      if (newLane !== playerLane || newIsJumping !== isJumping || newIsSliding !== isSliding) {
+          updatePlayerState({ lane: newLane, isJumping: newIsJumping, isSliding: newIsSliding });
+          
+          // Handle jump/slide timeouts locally for now, or move to useFrame/store logic
+          if (newIsJumping) {
+            setTimeout(() => {
+                updatePlayerState({ isJumping: false });
+            }, 800); 
+          }
+          if (newIsSliding) {
+             setTimeout(() => {
+                updatePlayerState({ isSliding: false });
+            }, 800); 
+          }
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, playerState]);
-  
-  // Jump animation
-  const jump = () => {
-    setPlayerState(prev => ({ ...prev, isJumping: true }));
-    
-    // Reset after jump animation
-    setTimeout(() => {
-      setPlayerState(prev => ({ ...prev, isJumping: false }));
-    }, 800);
-  };
-  
-  // Slide animation
-  const slide = () => {
-    setPlayerState(prev => ({ ...prev, isSliding: true }));
-    
-    // Reset after slide animation
-    setTimeout(() => {
-      setPlayerState(prev => ({ ...prev, isSliding: false }));
-    }, 800);
-  };
-  
-  // Handle collision
-  const handleCollision = () => {
-    if (playerState.isDead) return;
-    
-    setPlayerState(prev => ({ ...prev, isDead: true }));
-    decrementLives();
-    
-    // Reset player state after collision
-    setTimeout(() => {
-      setPlayerState(prev => ({
-        ...prev,
-        isDead: false,
-        isJumping: false,
-        isSliding: false
-      }));
-    }, 1000);
-  };
+  }, [gameState, playerLane, isJumping, isSliding, isDead, updatePlayerState]);
   
   // Update player movement
   useFrame((state, delta) => {
     if (!playerRef.current) return;
     
     // Update position based on current lane
-    const targetX = lanePositions[playerState.lane + 1];
+    const targetX = lanePositions[playerLane + 1];
     playerRef.current.position.x = THREE.MathUtils.lerp(
       playerRef.current.position.x,
       targetX,
@@ -107,13 +93,11 @@ const Player: React.FC = () => {
     );
     
     // Update y position for jump
-    if (playerState.isJumping) {
-      // Enhanced jump curve
+    if (isJumping) {
       const jumpProgress = (Date.now() % 800) / 800;
       const jumpHeight = Math.sin(jumpProgress * Math.PI) * 2.5;
       playerRef.current.position.y = jumpHeight;
     } else {
-      // Smooth landing
       playerRef.current.position.y = THREE.MathUtils.lerp(
         playerRef.current.position.y,
         0,
@@ -122,7 +106,7 @@ const Player: React.FC = () => {
     }
     
     // Update scale and rotation for slide
-    if (playerState.isSliding) {
+    if (isSliding) {
       playerRef.current.scale.y = THREE.MathUtils.lerp(
         playerRef.current.scale.y,
         0.5,
@@ -147,8 +131,7 @@ const Player: React.FC = () => {
     }
     
     // Update rotation for run animation
-    if (gameState === 'playing' && !playerState.isDead) {
-      // Enhanced run animation
+    if (gameState === 'playing' && !isDead) {
       const runSpeed = 12;
       const runAmplitude = 0.15;
       const time = state.clock.getElapsedTime();
@@ -174,16 +157,35 @@ const Player: React.FC = () => {
       }
     }
     
-    // Update player state position for collision detection
-    setPlayerState(prev => ({
-      ...prev,
+    // Update player state position in the store
+    updatePlayerState({
       position: {
         x: playerRef.current!.position.x,
         y: playerRef.current!.position.y,
         z: playerRef.current!.position.z
-      }
-    }));
+      },
+    });
+
+    // Handle resetting isDead state after a short delay (e.g., invincibility frames)
+    if (isDead) {
+        const deadTimer = setTimeout(() => {
+            updatePlayerState({ isDead: false });
+        }, 1000); // 1 second invulnerability/dead display
+    }
   });
+  
+  // Move isDead timer logic to useEffect for proper cleanup
+  useEffect(() => {
+    let deadTimer: NodeJS.Timeout | null = null;
+    if (isDead) {
+        deadTimer = setTimeout(() => {
+            updatePlayerState({ isDead: false });
+        }, 1000); // 1 second invulnerability/dead display
+    }
+    return () => {
+        if (deadTimer) clearTimeout(deadTimer);
+    };
+  }, [isDead, updatePlayerState]);
   
   return (
     <group ref={playerRef} position={[0, 0, -5]} rotation={[0, 0, 0]}>
@@ -192,33 +194,33 @@ const Player: React.FC = () => {
         {/* Body */}
         <mesh castShadow position={[0, 0.75, 0]}>
           <boxGeometry args={[1, 1.5, 1]} />
-          <meshStandardMaterial color={playerState.isDead ? '#ff4444' : '#4444ff'} />
+          <meshStandardMaterial color={isDead ? '#ff4444' : '#4444ff'} />
         </mesh>
         
         {/* Head */}
         <mesh castShadow position={[0, 1.75, 0]}>
           <sphereGeometry args={[0.4, 16, 16]} />
-          <meshStandardMaterial color={playerState.isDead ? '#ff4444' : '#4444ff'} />
+          <meshStandardMaterial color={isDead ? '#ff4444' : '#4444ff'} />
         </mesh>
         
         {/* Arms */}
         <mesh castShadow position={[-0.65, 0.75, 0]}>
           <boxGeometry args={[0.3, 1.2, 0.3]} />
-          <meshStandardMaterial color={playerState.isDead ? '#ff2222' : '#2222ff'} />
+          <meshStandardMaterial color={isDead ? '#ff2222' : '#2222ff'} />
         </mesh>
         <mesh castShadow position={[0.65, 0.75, 0]}>
           <boxGeometry args={[0.3, 1.2, 0.3]} />
-          <meshStandardMaterial color={playerState.isDead ? '#ff2222' : '#2222ff'} />
+          <meshStandardMaterial color={isDead ? '#ff2222' : '#2222ff'} />
         </mesh>
         
         {/* Legs */}
         <mesh castShadow position={[-0.25, 0, 0]}>
           <boxGeometry args={[0.3, 1, 0.3]} />
-          <meshStandardMaterial color={playerState.isDead ? '#ff2222' : '#2222ff'} />
+          <meshStandardMaterial color={isDead ? '#ff2222' : '#2222ff'} />
         </mesh>
         <mesh castShadow position={[0.25, 0, 0]}>
           <boxGeometry args={[0.3, 1, 0.3]} />
-          <meshStandardMaterial color={playerState.isDead ? '#ff2222' : '#2222ff'} />
+          <meshStandardMaterial color={isDead ? '#ff2222' : '#2222ff'} />
         </mesh>
       </group>
     </group>
