@@ -1,7 +1,25 @@
 import React from 'react';
+import * as THREE from 'three';
 import { TrackSegment, Obstacle as ObstacleType, Collectible as CollectibleType } from '../../types/game';
 import Obstacle from './Obstacle';
 import Collectible from './Collectible';
+
+// Create shared materials to reduce GPU overhead
+const TRACK_MATERIAL = new THREE.MeshStandardMaterial({
+  color: "#8a8a8a",
+  roughness: 0.8,
+  metalness: 0.2
+});
+
+const BARRIER_MATERIAL = new THREE.MeshStandardMaterial({
+  color: "#666666"
+});
+
+const LANE_MATERIAL = new THREE.MeshStandardMaterial({
+  color: "white",
+  emissive: "white",
+  emissiveIntensity: 0.2
+});
 
 interface TrackSegmentProps {
   segment: TrackSegment;
@@ -17,11 +35,7 @@ const TrackSegmentComponent: React.FC<TrackSegmentProps> = ({ segment }) => {
         rotation={[-Math.PI / 2, 0, 0]}
       >
         <planeGeometry args={[8, segment.length]} />
-        <meshStandardMaterial 
-          color="#8a8a8a"
-          roughness={0.8}
-          metalness={0.2}
-        />
+        <primitive object={TRACK_MATERIAL} />
       </mesh>
       
       {/* Side barriers */}
@@ -30,7 +44,7 @@ const TrackSegmentComponent: React.FC<TrackSegmentProps> = ({ segment }) => {
         position={[-4, 0, segment.length / 2]}
       >
         <boxGeometry args={[0.3, 1, segment.length]} />
-        <meshStandardMaterial color="#666666" />
+        <primitive object={BARRIER_MATERIAL} />
       </mesh>
       
       <mesh 
@@ -38,7 +52,7 @@ const TrackSegmentComponent: React.FC<TrackSegmentProps> = ({ segment }) => {
         position={[4, 0, segment.length / 2]}
       >
         <boxGeometry args={[0.3, 1, segment.length]} />
-        <meshStandardMaterial color="#666666" />
+        <primitive object={BARRIER_MATERIAL} />
       </mesh>
       
       {/* Lane dividers */}
@@ -47,11 +61,7 @@ const TrackSegmentComponent: React.FC<TrackSegmentProps> = ({ segment }) => {
         rotation={[-Math.PI / 2, 0, 0]}
       >
         <planeGeometry args={[0.1, segment.length]} />
-        <meshStandardMaterial 
-          color="white"
-          emissive="white"
-          emissiveIntensity={0.2}
-        />
+        <primitive object={LANE_MATERIAL} />
       </mesh>
       
       <mesh 
@@ -59,11 +69,7 @@ const TrackSegmentComponent: React.FC<TrackSegmentProps> = ({ segment }) => {
         rotation={[-Math.PI / 2, 0, 0]}
       >
         <planeGeometry args={[0.1, segment.length]} />
-        <meshStandardMaterial 
-          color="white"
-          emissive="white"
-          emissiveIntensity={0.2}
-        />
+        <primitive object={LANE_MATERIAL} />
       </mesh>
       
       {/* Obstacles */}

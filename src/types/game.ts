@@ -6,7 +6,8 @@ export interface GameStore {
   lives: number;
   gameState: GameState;
   distance: number;
-  coins: number;
+  coins: number;         // Current game coins
+  totalCoins: number;    // Persistent total coins
   
   // Player State
   playerPosition: { x: number; y: number; z: number };
@@ -24,7 +25,7 @@ export interface GameStore {
   restartGame: () => void;
   incrementScore: (points: number) => void;
   incrementCoins: (amount: number) => void;
-  decrementLives: () => void;
+  decrementLives: (amount: number) => void;
   updateDistance: (distance: number) => void;
   updatePlayerState: (newState: Partial<PlayerState>) => void;
   setSegments: (segments: TrackSegment[]) => void;
@@ -41,7 +42,7 @@ export interface PlayerState {
 
 export interface Obstacle {
   id: string;
-  type: 'barrier' | 'gap' | 'overhead';
+  type: 'barrier' | 'gap'; // Simplified to only two obstacle types
   position: { x: number; y: number; z: number };
   lane: number; // -1: left, 0: center, 1: right
   scale: { x: number; y: number; z: number };
@@ -49,7 +50,7 @@ export interface Obstacle {
 
 export interface Collectible {
   id: string;
-  type: 'coin' | 'powerup';
+  type: 'coin'; // Simplified to only have coins
   position: { x: number; y: number; z: number };
   lane: number; // -1: left, 0: center, 1: right
   collected: boolean;

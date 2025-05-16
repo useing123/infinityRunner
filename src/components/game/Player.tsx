@@ -5,6 +5,38 @@ import * as THREE from 'three';
 import useGameStore from '../../store/gameStore';
 import { PlayerState } from '../../types/game';
 
+// Create shared materials to reduce GPU overhead
+const PLAYER_BODY_MATERIAL = new THREE.MeshStandardMaterial({
+  color: '#4444ff',
+  roughness: 0.7,
+  metalness: 0.3,
+  emissive: '#2222ff',
+  emissiveIntensity: 0.3
+});
+
+const PLAYER_BODY_DEAD_MATERIAL = new THREE.MeshStandardMaterial({
+  color: '#ff4444',
+  roughness: 0.7,
+  metalness: 0.3,
+  emissive: '#ff2222',
+  emissiveIntensity: 0.3
+});
+
+const PLAYER_LIMB_MATERIAL = new THREE.MeshStandardMaterial({
+  color: '#2222ff',
+  roughness: 0.7,
+  metalness: 0.3
+});
+
+const PLAYER_LIMB_DEAD_MATERIAL = new THREE.MeshStandardMaterial({
+  color: '#ff2222',
+  roughness: 0.7,
+  metalness: 0.3
+});
+
+const EYE_WHITE_MATERIAL = new THREE.MeshStandardMaterial({ color: 'white' });
+const EYE_BLACK_MATERIAL = new THREE.MeshStandardMaterial({ color: 'black' });
+
 const Player: React.FC = () => {
   const playerRef = useRef<THREE.Group>(null);
   const gameState = useGameStore((state) => state.gameState);
@@ -24,6 +56,10 @@ const Player: React.FC = () => {
   
   // Lane positions
   const lanePositions = [-2.5, 0, 2.5];
+  
+  // Reduce update frequency of glow for better performance
+  const [glowIntensity, setGlowIntensity] = useState(0.2);
+  const lastGlowUpdate = useRef(0);
   
   // Handle keyboard input
   useEffect(() => {
@@ -46,12 +82,14 @@ const Player: React.FC = () => {
           }
           break;
         case ' ': // Space key
+        case 'ArrowUp':
           if (!isJumping && !isSliding) {
             newIsJumping = true;
           }
           break;
         case 's':
         case 'S':
+        case 'ArrowDown':
           if (!isJumping && !isSliding) {
             newIsSliding = true;
           }
@@ -80,7 +118,7 @@ const Player: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState, playerLane, isJumping, isSliding, isDead, updatePlayerState]);
   
-  // Update player movement
+  // Update player movement with performance optimization
   useFrame((state, delta) => {
     if (!playerRef.current) return;
     
@@ -130,24 +168,22 @@ const Player: React.FC = () => {
       );
     }
     
-    // Update rotation for run animation
-    if (gameState === 'playing' && !isDead) {
+    // Update rotation for run animation - only if playing and not too many frames have passed
+    if (gameState === 'playing' && !isDead && state.clock.elapsedTime - lastGlowUpdate.current > 0.1) {
       const runSpeed = 12;
-      const runAmplitude = 0.15;
       const time = state.clock.getElapsedTime();
       
-      // Leg animation
+      // Only animate limbs if we have proper structure and it's time to update
       if (playerRef.current.children[0]) {
+        // Leg animation - less frequent updates
         const legs = playerRef.current.children[0].children.slice(-2);
         legs.forEach((leg, i) => {
           if (leg instanceof THREE.Mesh) {
             leg.position.z = Math.sin(time * runSpeed + (i * Math.PI)) * 0.2;
           }
         });
-      }
       
-      // Arm animation
-      if (playerRef.current.children[0]) {
+        // Arm animation - less frequent updates
         const arms = playerRef.current.children[0].children.slice(2, 4);
         arms.forEach((arm, i) => {
           if (arm instanceof THREE.Mesh) {
@@ -155,22 +191,22 @@ const Player: React.FC = () => {
           }
         });
       }
+      
+      // Update glow only periodically
+      lastGlowUpdate.current = state.clock.elapsedTime;
+      const newIntensity = 0.2 + (Math.sin(time * 2) + 1) * 0.15;
+      setGlowIntensity(newIntensity);
     }
     
-    // Update player state position in the store
-    updatePlayerState({
-      position: {
-        x: playerRef.current!.position.x,
-        y: playerRef.current!.position.y,
-        z: playerRef.current!.position.z
-      },
-    });
-
-    // Handle resetting isDead state after a short delay (e.g., invincibility frames)
-    if (isDead) {
-        const deadTimer = setTimeout(() => {
-            updatePlayerState({ isDead: false });
-        }, 1000); // 1 second invulnerability/dead display
+    // Update player state position in the store - throttle this for performance
+    if (state.clock.elapsedTime - lastGlowUpdate.current > 0.1) {
+      updatePlayerState({
+        position: {
+          x: playerRef.current.position.x,
+          y: playerRef.current.position.y,
+          z: playerRef.current.position.z
+        },
+      });
     }
   });
   
@@ -189,38 +225,66 @@ const Player: React.FC = () => {
   
   return (
     <group ref={playerRef} position={[0, 0, -5]} rotation={[0, 0, 0]}>
+      {/* Glow effect with increased intensity for better visibility */}
+      <pointLight
+        position={[0, 1, 0]}
+        intensity={glowIntensity * 1.2}
+        distance={4}
+        color={isDead ? '#ff6666' : '#6688ff'}
+      />
+      
       {/* Enhanced player character */}
       <group scale={[0.5, 1, 0.5]}>
         {/* Body */}
         <mesh castShadow position={[0, 0.75, 0]}>
           <boxGeometry args={[1, 1.5, 1]} />
-          <meshStandardMaterial color={isDead ? '#ff4444' : '#4444ff'} />
+          <primitive object={isDead ? PLAYER_BODY_DEAD_MATERIAL : PLAYER_BODY_MATERIAL} />
         </mesh>
         
         {/* Head */}
         <mesh castShadow position={[0, 1.75, 0]}>
           <sphereGeometry args={[0.4, 16, 16]} />
-          <meshStandardMaterial color={isDead ? '#ff4444' : '#4444ff'} />
+          <primitive object={isDead ? PLAYER_BODY_DEAD_MATERIAL : PLAYER_BODY_MATERIAL} />
         </mesh>
         
         {/* Arms */}
         <mesh castShadow position={[-0.65, 0.75, 0]}>
           <boxGeometry args={[0.3, 1.2, 0.3]} />
-          <meshStandardMaterial color={isDead ? '#ff2222' : '#2222ff'} />
+          <primitive object={isDead ? PLAYER_LIMB_DEAD_MATERIAL : PLAYER_LIMB_MATERIAL} />
         </mesh>
         <mesh castShadow position={[0.65, 0.75, 0]}>
           <boxGeometry args={[0.3, 1.2, 0.3]} />
-          <meshStandardMaterial color={isDead ? '#ff2222' : '#2222ff'} />
+          <primitive object={isDead ? PLAYER_LIMB_DEAD_MATERIAL : PLAYER_LIMB_MATERIAL} />
         </mesh>
         
         {/* Legs */}
         <mesh castShadow position={[-0.25, 0, 0]}>
           <boxGeometry args={[0.3, 1, 0.3]} />
-          <meshStandardMaterial color={isDead ? '#ff2222' : '#2222ff'} />
+          <primitive object={isDead ? PLAYER_LIMB_DEAD_MATERIAL : PLAYER_LIMB_MATERIAL} />
         </mesh>
         <mesh castShadow position={[0.25, 0, 0]}>
           <boxGeometry args={[0.3, 1, 0.3]} />
-          <meshStandardMaterial color={isDead ? '#ff2222' : '#2222ff'} />
+          <primitive object={isDead ? PLAYER_LIMB_DEAD_MATERIAL : PLAYER_LIMB_MATERIAL} />
+        </mesh>
+        
+        {/* Add eyes for more character */}
+        <mesh position={[-0.2, 1.85, 0.35]}>
+          <sphereGeometry args={[0.08, 8, 8]} />
+          <primitive object={EYE_WHITE_MATERIAL} />
+        </mesh>
+        <mesh position={[0.2, 1.85, 0.35]}>
+          <sphereGeometry args={[0.08, 8, 8]} />
+          <primitive object={EYE_WHITE_MATERIAL} />
+        </mesh>
+        
+        {/* Eye pupils */}
+        <mesh position={[-0.2, 1.85, 0.4]}>
+          <sphereGeometry args={[0.04, 8, 8]} />
+          <primitive object={EYE_BLACK_MATERIAL} />
+        </mesh>
+        <mesh position={[0.2, 1.85, 0.4]}>
+          <sphereGeometry args={[0.04, 8, 8]} />
+          <primitive object={EYE_BLACK_MATERIAL} />
         </mesh>
       </group>
     </group>

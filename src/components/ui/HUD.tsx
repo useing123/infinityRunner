@@ -1,47 +1,74 @@
 import React from 'react';
-import { Heart, Coins } from 'lucide-react';
+import { Heart, Coins, Medal } from 'lucide-react';
 import useGameStore from '../../store/gameStore';
 
 const HUD: React.FC = () => {
-  const { score, highScore, lives, distance, coins } = useGameStore(state => ({
+  // Get all needed values from game store
+  const { score, lives, coins, highScore, totalCoins, gameState } = useGameStore((state) => ({
     score: state.score,
-    highScore: state.highScore,
     lives: state.lives,
-    distance: state.distance,
-    coins: state.coins
+    coins: state.coins,
+    highScore: state.highScore,
+    totalCoins: state.totalCoins,
+    gameState: state.gameState
   }));
 
+  // Only show HUD during gameplay
+  if (gameState !== 'playing') return null;
+
   return (
-    <div className="p-4 w-full">
-      {/* Top bar with lives and coins */}
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-1">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Heart 
-              key={i} 
-              size={28} 
-              className={i < lives ? "text-red-500 fill-red-500" : "text-gray-500"} 
-            />
-          ))}
+    <div className="absolute top-0 left-0 w-full pointer-events-none">
+      <div className="flex justify-between items-start p-4">
+        {/* Left side: Score and lives */}
+        <div className="flex flex-col gap-2">
+          {/* Score */}
+          <div className="bg-black bg-opacity-50 backdrop-blur-sm rounded-lg px-4 py-2 text-white flex items-center">
+            <Medal className="text-yellow-400 mr-2" size={20} />
+            <div>
+              <p className="text-sm font-semibold">Score</p>
+              <p className="text-xl font-bold">{score}</p>
+            </div>
+          </div>
+          
+          {/* Lives */}
+          <div className="bg-black bg-opacity-50 backdrop-blur-sm rounded-lg px-4 py-2 text-white flex items-center">
+            <Heart className="text-red-500 mr-2" size={20} />
+            <div>
+              <p className="text-sm font-semibold">Lives</p>
+              <p className="text-xl font-bold">{lives}</p>
+            </div>
+          </div>
         </div>
         
-        <div className="bg-gray-800/70 rounded-full px-4 py-2 text-white flex items-center gap-2">
-          <Coins size={20} className="text-yellow-400" />
-          <span className="font-bold">{coins}</span>
+        {/* Right side: Coins, high score */}
+        <div className="flex flex-col gap-2">
+          {/* Coins */}
+          <div className="bg-black bg-opacity-50 backdrop-blur-sm rounded-lg px-4 py-2 text-white flex items-center">
+            <Coins className="text-yellow-400 mr-2" size={20} />
+            <div>
+              <p className="text-sm font-semibold">Coins</p>
+              <p className="text-xl font-bold">{coins}</p>
+            </div>
+          </div>
+          
+          {/* Total Coins */}
+          <div className="bg-black bg-opacity-50 backdrop-blur-sm rounded-lg px-4 py-2 text-white flex items-center">
+            <Coins className="text-orange-400 mr-2" size={20} />
+            <div>
+              <p className="text-sm font-semibold">Total Coins</p>
+              <p className="text-xl font-bold">{totalCoins}</p>
+            </div>
+          </div>
+          
+          {/* High Score */}
+          <div className="bg-black bg-opacity-50 backdrop-blur-sm rounded-lg px-4 py-2 text-white flex items-center">
+            <Medal className="text-amber-400 mr-2" size={20} />
+            <div>
+              <p className="text-sm font-semibold">High Score</p>
+              <p className="text-xl font-bold">{highScore}</p>
+            </div>
+          </div>
         </div>
-      </div>
-      
-      {/* Score display */}
-      <div className="flex flex-col items-center">
-        <div className="bg-gray-800/70 rounded-full px-6 py-2 text-white">
-          <p className="text-2xl font-bold">{score}</p>
-        </div>
-        <p className="text-sm text-white mt-1">High: {highScore}</p>
-      </div>
-      
-      {/* Distance meter */}
-      <div className="absolute bottom-4 left-4 bg-gray-800/70 rounded-full px-4 py-2 text-white">
-        <p>{distance.toFixed(0)}m</p>
       </div>
     </div>
   );

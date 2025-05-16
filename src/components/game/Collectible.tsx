@@ -1,7 +1,22 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Collectible as CollectibleType } from '../../types/game';
+
+// Create shared materials to reduce GPU overhead
+const COIN_MATERIAL = new THREE.MeshStandardMaterial({
+  color: "#FFD700",
+  metalness: 0.8,
+  roughness: 0.2,
+  emissive: "#FFD700",
+  emissiveIntensity: 0.7  // Increased emissive intensity
+});
+
+const POWERUP_MATERIAL = new THREE.MeshStandardMaterial({
+  color: "#39CCCC",
+  emissive: "#39CCCC",
+  emissiveIntensity: 0.5
+});
 
 interface CollectibleProps {
   collectible: CollectibleType;
@@ -10,63 +25,66 @@ interface CollectibleProps {
 
 const Collectible: React.FC<CollectibleProps> = ({ collectible, segmentStartZ }) => {
   const meshRef = useRef<THREE.Mesh>(null);
+  // Local state to track collection for animations
+  const [isCollected, setIsCollected] = useState(collectible.collected);
+  const [opacity, setOpacity] = useState(1.0);
   
-  // Rotate collectible for visual effect
+  // IMPORTANT: All hooks must be called before any conditional returns
+  
+  // Rotation and animation hook
   useFrame((state) => {
-    if (meshRef.current && !collectible.collected) {
-      meshRef.current.rotation.y += 0.02;
+    // Only apply animations if the collectible is not collected and ref exists
+    if (meshRef.current && !isCollected) {
+      // Faster rotation for better visibility
+      meshRef.current.rotation.y += 0.05;
       
-      // Add a gentle bobbing motion (use the meshRef's current y for base)
+      // Add a gentle bobbing motion
       meshRef.current.position.y = 
-        (collectible.position.y) + // Base Y position (relative to segment)
-         Math.sin(state.clock.getElapsedTime() * 2) * 0.1;
+        (collectible.position.y) + 
+        Math.sin(state.clock.getElapsedTime() * 3) * 0.15; // More pronounced bobbing
     }
   });
   
-  // Define collectible appearance based on type
-  const getCollectibleGeometry = () => {
-    switch (collectible.type) {
-      case 'coin':
-        return <cylinderGeometry args={[0.3, 0.3, 0.05, 16]} />;
-      case 'powerup':
-        return <boxGeometry args={[0.5, 0.5, 0.5]} />;
-      default:
-        return <sphereGeometry args={[0.3, 16, 16]} />;
+  // Update local state when prop changes
+  useEffect(() => {
+    if (collectible.collected && !isCollected) {
+      console.log("Collectible marked as collected:", collectible.id);
+      setIsCollected(true);
     }
-  };
-  
-  // Define material based on collectible type
-  const getCollectibleMaterial = () => {
-    switch (collectible.type) {
-      case 'coin':
-        return <meshStandardMaterial color="#FFD700" metalness={0.8} roughness={0.2} />;
-      case 'powerup':
-        return <meshStandardMaterial color="#39CCCC" emissive="#39CCCC" emissiveIntensity={0.5} />;
-      default:
-        return <meshStandardMaterial color="#A0A0A0" />;
-    }
-  };
-  
-  // Only render if not collected
-  if (collectible.collected) return null;
+  }, [collectible.collected, isCollected, collectible.id]);
   
   // Calculate relative Z position
   const relativeZ = collectible.position.z - segmentStartZ;
+  
+  // Skip rendering if collected
+  if (isCollected) {
+    return null;
+  }
 
   return (
-    <mesh
-      ref={meshRef}
-      // Use relativeZ for mesh position Z
+    <group
       position={[
         collectible.position.x, 
-        collectible.position.y, // Keep original Y 
+        collectible.position.y, 
         relativeZ
       ]}
-      castShadow
     >
-      {getCollectibleGeometry()}
-      {getCollectibleMaterial()}
-    </mesh>
+      {/* Add small light for better visibility */}
+      <pointLight
+        intensity={0.6}
+        distance={1.5}
+        color="#FFD700"
+      />
+      
+      <mesh
+        ref={meshRef}
+        castShadow
+      >
+        {/* Larger coin for better visibility */}
+        <cylinderGeometry args={[0.4, 0.4, 0.05, 16]} />
+        <primitive object={COIN_MATERIAL} />
+      </mesh>
+    </group>
   );
 };
 
