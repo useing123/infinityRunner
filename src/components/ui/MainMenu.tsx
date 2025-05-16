@@ -1,10 +1,11 @@
 import React from 'react';
-import { Play, Settings, Coins } from 'lucide-react';
+import { Play, Settings, Coins, ShoppingCart } from 'lucide-react';
 import useGameStore from '../../store/gameStore';
 
 const MainMenu: React.FC = () => {
-  const { startGame, highScore, totalCoins } = useGameStore(state => ({
+  const { startGame, openShop, highScore, totalCoins } = useGameStore(state => ({
     startGame: state.startGame,
+    openShop: state.openShop,
     highScore: state.highScore,
     totalCoins: state.totalCoins
   }));
@@ -34,9 +35,18 @@ const MainMenu: React.FC = () => {
         <div className="flex flex-col gap-4 items-center">
           <button
             onClick={startGame}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full w-48 transition duration-300"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full w-48 transition duration-300 flex justify-center items-center"
           >
+            <Play className="w-5 h-5 mr-2" />
             Play
+          </button>
+          
+          <button
+            onClick={openShop}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-full w-48 transition duration-300 flex justify-center items-center"
+          >
+            <ShoppingCart className="w-5 h-5 mr-2" />
+            Shop
           </button>
           
           {/* Game instructions */}

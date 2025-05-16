@@ -1,4 +1,4 @@
-export type GameState = 'menu' | 'playing' | 'gameOver';
+export type GameState = 'menu' | 'playing' | 'gameOver' | 'shop';
 
 export interface GameStore {
   score: number;
@@ -8,6 +8,10 @@ export interface GameStore {
   distance: number;
   coins: number;         // Current game coins
   totalCoins: number;    // Persistent total coins
+  shopItems: ShopItem[]; // Available items in the shop
+  ownedItems: string[];  // IDs of owned items
+  speed: number;         // Game speed
+  cameraShake: boolean;  // Camera shake effect
   
   // Player State
   playerPosition: { x: number; y: number; z: number };
@@ -30,6 +34,16 @@ export interface GameStore {
   updatePlayerState: (newState: Partial<PlayerState>) => void;
   setSegments: (segments: TrackSegment[]) => void;
   collectCoin: (segmentId: string, coinId: string) => void;
+  
+  // Speed and Effects
+  increaseSpeed: () => void;
+  setCameraShake: (shake: boolean) => void;
+  resetGame: () => void;
+  
+  // Shop Actions
+  openShop: () => void;
+  returnToMenu: () => void;
+  purchaseItem: (itemId: string) => boolean;
 }
 
 export interface PlayerState {
@@ -65,4 +79,15 @@ export interface TrackSegment {
   obstacles: Obstacle[];
   collectibles: Collectible[];
   length: number;
+}
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  type: 'powerup' | 'skin' | 'ability';
+  owned: boolean;
+  imageUrl?: string;
+  effect?: string;
 }

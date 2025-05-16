@@ -183,7 +183,7 @@ const World: React.FC = () => {
                         // Simplified collision detection for only two obstacle types
                         switch(obstacle.type) {
                             case 'barrier':
-                                if (!isSliding && verticalCollision) collisionDetected = true;
+                                if (!isJumping && verticalCollision) collisionDetected = true;
                                 break;
                             case 'gap':
                                 if (!isJumping && verticalCollision) collisionDetected = true;

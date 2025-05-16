@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GameStore, Collectible, TrackSegment } from '../types/game';
+import { GameStore, Collectible, TrackSegment, ShopItem } from '../types/game';
 
 // Load values from localStorage
 const loadHighScore = (): number => {
@@ -10,6 +10,76 @@ const loadHighScore = (): number => {
 const loadTotalCoins = (): number => {
   const storedTotalCoins = localStorage.getItem('totalCoins');
   return storedTotalCoins ? parseInt(storedTotalCoins, 10) : 0;
+};
+
+const loadOwnedItems = (): string[] => {
+  const storedOwnedItems = localStorage.getItem('ownedItems');
+  return storedOwnedItems ? JSON.parse(storedOwnedItems) : [];
+};
+
+// Default shop items
+const defaultShopItems: ShopItem[] = [
+  {
+    id: 'extralife',
+    name: 'Extra Life',
+    description: 'Start with an extra life',
+    price: 1000,
+    type: 'powerup',
+    owned: false,
+    effect: 'Adds 1 extra life at the start of each run'
+  },
+  {
+    id: 'shield',
+    name: 'Shield',
+    description: 'One-time protection from obstacles',
+    price: 20000,
+    type: 'powerup',
+    owned: false,
+    effect: 'Protects from one collision with an obstacle'
+  },
+  {
+    id: 'magnet',
+    name: 'Coin Magnet',
+    description: 'Attracts coins from nearby lanes',
+    price: 30000,
+    type: 'ability',
+    owned: false,
+    effect: 'Collects coins from all lanes'
+  },
+  {
+    id: 'doublejump',
+    name: 'Double Jump',
+    description: 'Allows jumping twice in a row',
+    price: 50000,
+    type: 'ability',
+    owned: false,
+    effect: 'Enables jumping again while in the air'
+  },
+  {
+    id: 'blueskin',
+    name: 'Blue Runner',
+    description: 'Cool blue character skin',
+    price: 250000,
+    type: 'skin',
+    owned: false,
+  },
+  {
+    id: 'redskin',
+    name: 'Red Runner',
+    description: 'Flashy red character skin',
+    price: 25000,
+    type: 'skin',
+    owned: false,
+  },
+];
+
+// Update owned status based on localStorage
+const getInitialShopItems = (): ShopItem[] => {
+  const ownedItems = loadOwnedItems();
+  return defaultShopItems.map(item => ({
+    ...item,
+    owned: ownedItems.includes(item.id)
+  }));
 };
 
 const useGameStore = create<GameStore>((set, get) => ({
@@ -28,6 +98,8 @@ const useGameStore = create<GameStore>((set, get) => ({
   segments: [],
   speed: 15,
   cameraShake: false,
+  shopItems: getInitialShopItems(),
+  ownedItems: loadOwnedItems(),
   
   startGame: () => set({ 
     gameState: 'playing', 
@@ -206,6 +278,54 @@ const useGameStore = create<GameStore>((set, get) => ({
       highScore,
       totalCoins
     });
+  },
+  
+  // Shop Actions
+  openShop: () => set({ gameState: 'shop' }),
+  
+  purchaseItem: (itemId: string) => {
+    const { totalCoins, shopItems, ownedItems } = get();
+    
+    // Find the item to purchase
+    const item = shopItems.find(item => item.id === itemId);
+    
+    if (!item) {
+      console.error("Item not found:", itemId);
+      return false;
+    }
+    
+    // Check if already owned
+    if (item.owned) {
+      console.log("Item already owned:", itemId);
+      return false;
+    }
+    
+    // Check if enough coins
+    if (totalCoins < item.price) {
+      console.log("Not enough coins to purchase:", itemId);
+      return false;
+    }
+    
+    // Purchase the item
+    const newTotalCoins = totalCoins - item.price;
+    const newOwnedItems = [...ownedItems, itemId];
+    const newShopItems = shopItems.map(shopItem => 
+      shopItem.id === itemId ? { ...shopItem, owned: true } : shopItem
+    );
+    
+    // Save to localStorage
+    localStorage.setItem('totalCoins', newTotalCoins.toString());
+    localStorage.setItem('ownedItems', JSON.stringify(newOwnedItems));
+    
+    // Update state
+    set({ 
+      totalCoins: newTotalCoins,
+      ownedItems: newOwnedItems,
+      shopItems: newShopItems
+    });
+    
+    console.log("Purchased item:", itemId);
+    return true;
   }
 }));
 
