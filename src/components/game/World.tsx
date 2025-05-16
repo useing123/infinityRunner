@@ -166,7 +166,11 @@ const World: React.FC = () => {
 
                         if (collisionDetected) {
                             console.log("Collision with obstacle!", obstacle.id);
-                            decrementLives(); 
+                            if(obstacle.type === 'barrier'){
+                              decrementLives(3);
+                            } else{
+                              decrementLives(1); 
+                            }
                             return; 
                         }
                     }

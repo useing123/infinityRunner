@@ -59,9 +59,9 @@ const useGameStore = create<GameStore>((set, get) => ({
     coins: state.coins + amount 
   })),
   
-  decrementLives: () => set((state) => {
+  decrementLives: (hp: number) => set((state) => {
     if (state.isDead) return {};
-    const newLives = state.lives - 1;
+    const newLives = state.lives - hp;
     if (newLives <= 0) {
       return {
         lives: 0,

@@ -36,7 +36,7 @@ const Obstacle: React.FC<ObstacleProps> = ({ obstacle, segmentStartZ }) => {
         return <meshStandardMaterial color="#FF4136" />;
       case 'gap':
         // No material needed if geometry is null
-        return null;
+        return <meshStandardMaterial color="#A2A0A0" />;
       case 'overhead':
         return <meshStandardMaterial color="#FFDC00" />;
       default:
