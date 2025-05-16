@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Heart, Coins, Medal } from 'lucide-react';
 import useGameStore from '../../store/gameStore';
 
@@ -12,6 +12,16 @@ const HUD: React.FC = () => {
     totalCoins: state.totalCoins,
     gameState: state.gameState
   }));
+
+  // Debug: Log when coins change for debugging
+  useEffect(() => {
+    console.log("HUD: Coins updated:", coins);
+  }, [coins]);
+
+  // Debug: Log when totalCoins change for debugging
+  useEffect(() => {
+    console.log("HUD: TotalCoins updated:", totalCoins);
+  }, [totalCoins]);
 
   // Only show HUD during gameplay
   if (gameState !== 'playing') return null;

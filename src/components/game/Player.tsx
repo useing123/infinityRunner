@@ -61,10 +61,21 @@ const Player: React.FC = () => {
   const [glowIntensity, setGlowIntensity] = useState(0.2);
   const lastGlowUpdate = useRef(0);
   
+  // Track pressed keys to prevent multiple jumps
+  const keysPressed = useRef<Set<string>>(new Set());
+  
   // Handle keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (gameState !== 'playing' || isDead) return;
+      
+      // BUG FIX: Track which keys are pressed to prevent multiple jumps/slides
+      if (keysPressed.current.has(e.key)) {
+        return; // Key is already pressed, ignore repeated events
+      }
+      
+      // Add this key to the pressed keys set
+      keysPressed.current.add(e.key);
       
       let newLane = playerLane;
       let newIsJumping = isJumping;
@@ -114,8 +125,18 @@ const Player: React.FC = () => {
       }
     };
     
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // Remove the key from the pressed keys set
+      keysPressed.current.delete(e.key);
+    };
+    
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, [gameState, playerLane, isJumping, isSliding, isDead, updatePlayerState]);
   
   // Update player movement with performance optimization

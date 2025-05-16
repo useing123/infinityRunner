@@ -26,7 +26,8 @@ const World: React.FC = () => {
     playerPosition,
     setSegments, // Action to update segments in store
     decrementLives,
-    collectCoin
+    collectCoin,
+    incrementCoins
   } = useGameStore((state) => ({
     gameState: state.gameState,
     segments: state.segments, // Use segments from store
@@ -37,12 +38,22 @@ const World: React.FC = () => {
     playerPosition: state.playerPosition,
     setSegments: state.setSegments,
     decrementLives: state.decrementLives,
-    collectCoin: state.collectCoin
+    collectCoin: state.collectCoin,
+    incrementCoins: state.incrementCoins
   }));
 
   const segmentLength = 100; // Length of each track segment
   const visibleSegments = 2; // Reduced for better performance
   const lanePositions = [-2.5, 0, 2.5]; // Same as in Player
+  
+  // Bug Fix: Reset world position when game state changes to 'playing'
+  useEffect(() => {
+    if (gameState === 'playing' && worldRef.current) {
+      // Reset the world position whenever the game starts/restarts
+      worldRef.current.position.z = 0;
+      console.log("World position reset to 0");
+    }
+  }, [gameState]);
   
   // Initialize track - update store
   useEffect(() => {
@@ -206,24 +217,30 @@ const World: React.FC = () => {
                 const coinWorldX = coin.position.x; 
                 const playerWorldX = playerPosition.x; 
 
-                // Corrected dz calculation using player's fixed Z
-                const dz = Math.abs(PLAYER_FIXED_Z - coinWorldZ); 
-                // dy calculation comparing centers (player center vs coin center)
-                const dy = Math.abs(playerWorldY - coin.position.y); // Assuming coin.position.y is its center
-                const dx = Math.abs(playerWorldX - coinWorldX); 
+                // UPDATED COIN COLLECTION LOGIC
+                // 1. Use lane-based detection first (more reliable)
+                const sameLane = playerLane === coin.lane;
                 
-                const Z_TOLERANCE = 1.0; 
-                if (dz < (PLAYER_BOUNDS.depth / 2 + Z_TOLERANCE)) { 
-                    if (dx < (PLAYER_BOUNDS.width / 2 + COIN_RADIUS)) { 
-                        if (dy < (PLAYER_BOUNDS.height / 2 + COIN_RADIUS)) {
-                            console.log("Collecting coin!", coin.id, "in segment", segment.id);
-                            
-                            // Force immediate collected state for visual feedback
-                            coin.collected = true;
-                            
-                            // Update the store
-                            collectCoin(segment.id, coin.id);
-                        }
+                // 2. Z-axis proximity check with wider tolerance
+                const Z_TOLERANCE = 1.5; // Increased from 1.0
+                const zDistance = Math.abs(PLAYER_FIXED_Z - coinWorldZ);
+                const zCollision = zDistance < Z_TOLERANCE;
+                
+                // Simpler coin collection logic with debugging for coin IDs
+                if (sameLane && zCollision) {
+                    console.log(`COIN COLLECTION ATTEMPT - ID: ${coin.id} | SEGMENT: ${segment.id}`);
+                    
+                    // Instead of setting collected locally, let the store handle it
+                    // This avoids state synchronization issues
+                    
+                    // Add logic to prevent multiple collection attempts for the same coin
+                    if (!coin.collected) {
+                        // Call incrementCoins directly instead of collectCoin
+                        // This simplifies the logic and avoids segment/coin ID mismatches
+                        incrementCoins(1);
+                        
+                        // Mark as collected for visual feedback only
+                        coin.collected = true;
                     }
                 }
             });
@@ -263,12 +280,12 @@ const World: React.FC = () => {
         rotation={[-Math.PI / 2, 0, 0]} 
         position={[0, -0.5, -(segmentLength * visibleSegments / 2)]} // Center ground relative to visible segments
       >
-        <planeGeometry args={[10, segmentLength * (visibleSegments + 1)]} /> // Make ground larger
+        {/* <planeGeometry args={[10, segmentLength * (visibleSegments + 1)]} /> // Make ground larger
         <meshStandardMaterial 
-          color="#4a6741"
-          roughness={1}
-          metalness={0}
-        />
+          color="#222222"
+          roughness={0.8}
+          metalness={0.2}
+        /> */}
       </mesh>
 
       {/* Render segments from store */}

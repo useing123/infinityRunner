@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import React, { useEffect, useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import Player from './Player';
 import World from './World';
 import useGameStore from '../../store/gameStore';
@@ -10,15 +10,28 @@ const Scene: React.FC = () => {
     updateDistance: state.updateDistance
   }));
   
+  // Keep track of when the game started to reset the timer
+  const gameStartTime = useRef(0);
+  const { clock } = useThree();
+  
+  // Reset game elements and clock when game starts
   useEffect(() => {
-    // Reset game elements when game starts
-  }, [gameState]);
+    if (gameState === 'playing') {
+      // Store the current time as the new reference point
+      gameStartTime.current = clock.getElapsedTime();
+      // Reset the score to 0
+      updateDistance(0);
+    }
+  }, [gameState, clock, updateDistance]);
   
   useFrame(({ clock }) => {
     if (gameState === 'playing') {
-      // Update distance/score based on time
-      const elapsedTime = clock.getElapsedTime();
-      updateDistance(elapsedTime * 5); // Simple distance calculation
+      // Calculate elapsed time since game started
+      const currentTime = clock.getElapsedTime();
+      const gameTime = currentTime - gameStartTime.current;
+      
+      // Update distance/score based on time since game started
+      updateDistance(gameTime * 5); // Simple distance calculation
     }
   });
   
